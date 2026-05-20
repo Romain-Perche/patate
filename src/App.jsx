@@ -31,9 +31,18 @@ const shuffledDeck = (deck) => {
 
 export function App() {
   const [pile, setPile] = useState(createDeck());
+  const [discardPile, setDiscardPile] = useState([]);
   const [MyCards, setMyCards] = useState(Array(4).fill(null));
   const [YourCards, setYourCards] = useState(Array(4).fill(null));
-  const [isFacedUp, setIsFacedUp] = useState(Array(8).fill(false))
+  const [isFacedUp, setIsFacedUp] = useState(Array(8).fill(false));
+
+  const handlePileClick = () => {
+    if (pile.length === 0) return;
+    const newPile = [...pile];
+    const drawnCard = newPile.pop();
+    setPile(newPile);
+    setDiscardPile([...discardPile, drawnCard]);
+  };
 
   const distribute_cards = (pile) => {
     const newPile = pile.slice();
@@ -60,31 +69,54 @@ export function App() {
         <h1>Patate</h1>
       </header>
       <main className="game-table">
-        <div className="cards">
-          {MyCards.map((card, index) => {
-            if (!card) return <div key={index} className="empty-slot">Empty</div>;
-            return (
+        <div className="pile-area">
+          <div className='pile'>
+            {pile.length > 0 && (
               <img
-                key={index}
-                src={`/images/cards/${card}.png`}
-                alt={`${card}`}
-                className="card-image"
+                src="/images/cards/back.png"
+                alt="Pile"
+                className='card-image'
+                onClick={handlePileClick}
               />
-            );
-          })}
+            )}
+          </div>
+          <div className='discard-pile'>
+            {discardPile.length > 0 && (
+              <img
+                src={`/images/cards/${discardPile[discardPile.length - 1]}.png`}
+                alt="Top Discard"
+                className='card-image'
+              />
+            )}
+          </div>
         </div>
-        <div className="cards">
-          {YourCards.map((card, index) => {
-            if (!card) return <div key={index} className="empty-slot">Empty</div>;
-            return (
-              <img
-                key={index}
-                src={`/images/cards/${card}.png`}
-                alt={`${card}`}
-                className="card-image"
-              />
-            );
-          })}
+        <div className='hands'>
+          <div className="cards">
+            {MyCards.map((card, index) => {
+              if (!card) return <div key={index} className="empty-slot">Empty</div>;
+              return (
+                <img
+                  key={index}
+                  src={`/images/cards/${card}.png`}
+                  alt={`${card}`}
+                  className="card-image"
+                />
+              );
+            })}
+          </div>
+          <div className="cards">
+            {YourCards.map((card, index) => {
+              if (!card) return <div key={index} className="empty-slot">Empty</div>;
+              return (
+                <img
+                  key={index}
+                  src={`/images/cards/back.png`}
+                  alt={`${card}`}
+                  className="card-image"
+                />
+              );
+            })}
+          </div>
         </div>
       </main>
     </div>
