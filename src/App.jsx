@@ -80,12 +80,12 @@ export function App() {
               />
             )}
           </div>
-          <div className='discard-pile'>
+          <div className='discard-pile' style={{ minHeight: '150px', minWidth: '100px', display: 'flex', justifyContent: 'center' }}>
             {discardPile.length > 0 && (
               <img
                 src={`/images/cards/${discardPile[discardPile.length - 1]}.png`}
                 alt="Top Discard"
-                className='card-image'
+                className='card-image discard-card'
               />
             )}
           </div>
@@ -97,9 +97,9 @@ export function App() {
               return (
                 <img
                   key={index}
-                  src={`/images/cards/${card}.png`}
+                  src={'/images/cards/back.png'}
                   alt={`${card}`}
-                  className="card-image"
+                  className="card-image rival-card"
                 />
               );
             })}
@@ -112,7 +112,7 @@ export function App() {
                   key={index}
                   src={`/images/cards/back.png`}
                   alt={`${card}`}
-                  className="card-image"
+                  className="card-image my-card"
                 />
               );
             })}
