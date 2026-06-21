@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './App.css';
+import { io } from 'socket.io-client';
 
 
 const createDeck = () => {
@@ -29,8 +30,17 @@ const shuffledDeck = (deck) => {
 
 
 
+const socket = io('http://localhost:3000');
+
 export function App() {
-  const [pile, setPile] = useState(createDeck());
+  const [screen, setScreen] = useState('menu'); // 'menu', 'waiting', 'game'
+  const [nickname, setNickname] = useState('');
+  const [roomCodeInput, setRoomCodeInput] = useState('');
+  const [currentRoom, setCurrentRoom] = useState(null);
+
+
+
+  const [pile, setPile] = useState([]);
   const [discardPile, setDiscardPile] = useState([]);
   const [MyCards, setMyCards] = useState(Array(4).fill(null));
   const [YourCards, setYourCards] = useState(Array(4).fill(null));
@@ -44,30 +54,88 @@ export function App() {
     setDiscardPile([...discardPile, drawnCard]);
   };
 
-  const distribute_cards = (pile) => {
-    const newPile = pile.slice();
-    const newMyCards = Array(4).fill(null);
-    const newYourCards = Array(4).fill(null);
-    for (let i = 0; i < 4; i++) {
-      newMyCards[i] = newPile.pop();
-    }
-    setMyCards(newMyCards);
-    for (let i = 0; i < 4; i++) {
-      newYourCards[i] = newPile.pop();
-    }
-    setYourCards(newYourCards);
-    setPile(newPile);
-  }
+
 
   useEffect(() => {
-    distribute_cards(pile);
+
+    socket.on('roomCreated', (code, my_hand) => {
+      setCurrentRoom(code);
+      setScreen('waiting');
+    });
+
+    socket.on('gameStart', () => {
+      setScreen('game');
+    });
+
+    socket.on('gameStateUpdate', (gameState) => {
+      console.log('gamestate : ', gameState);
+      setPile(gameState.pile);
+      setDiscardPile(gameState.discardPile);
+      setMyCards(gameState.myHand);
+      setYourCards(gameState.rivalHand);
+    });
+
+    return () => {
+      if (socket) {
+        socket.off('roomCreated');
+        socket.off('gameStart');
+        socket.off('gameStateUpdate');
+      }
+    };
+
   }, []);
+
+  const CreateRoom = () => {
+    if (nickname) {
+      socket.emit('createRoom', nickname);
+    } else {
+      alert("Please enter a nickname first ! ");
+    }
+  };
+
+  const JoinRoom = () => {
+    if (nickname && roomCodeInput) {
+      socket.emit('joinRoom', nickname, roomCodeInput);
+    } else {
+      alert("Please enter a nickname and a room code first ! ");
+    }
+  }
+
+
 
   return (
     <div className="game-container">
       <header>
         <h1>Patate</h1>
       </header>
+
+      {/* MENU SCREEN */}
+      {screen === 'menu' && (
+        <div className='menu'>
+          <h2> Welcome to Patate </h2>
+          <div className='input-group'>
+            <label>Pseudo : </label>
+            <input type="text" value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              placeholder="Enter your name" />
+          </div>
+          <div className='menu-actions'>
+            <button onClick={CreateRoom} className='create-room-button'>
+              Create New Game
+            </button>
+            <div className='divider'>OR</div>
+            <div className='join-group'>
+              <input
+                type="text" value={roomCodeInput}
+                onChange={(e) => setRoomCodeInput(e.target.value)}
+                placeholder="Room Code"
+              />
+            </div>
+            <button onClick={JoinRoom} className='join-room-button'>Join Game</button>
+          </div>
+        </div>
+      )}
+
       <main className="game-table">
         <div className="pile-area">
           <div className='pile'>
@@ -92,7 +160,7 @@ export function App() {
         </div>
         <div className='hands'>
           <div className="cards">
-            {MyCards.map((card, index) => {
+            {YourCards.map((card, index) => {
               if (!card) return <div key={index} className="empty-slot">Empty</div>;
               return (
                 <img
@@ -105,7 +173,7 @@ export function App() {
             })}
           </div>
           <div className="cards">
-            {YourCards.map((card, index) => {
+            {MyCards.map((card, index) => {
               if (!card) return <div key={index} className="empty-slot">Empty</div>;
               return (
                 <img
