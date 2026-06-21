@@ -1,7 +1,7 @@
-const { create } = require('domain');
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const { createDeck } = require('./game');
 
 const app = express();
 const server = http.createServer(app);
@@ -14,38 +14,6 @@ const io = new Server(server, {
   }
 });
 
-
-const createDeck = () => {
-  const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
-  const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
-  let deck = [];
-  for (let suit of suits) {
-    for (let value of values) {
-      deck.push(`${value}_of_${suit}`);
-    }
-  }
-  deck.push('Joker');
-  deck.push('Joker');
-  return shuffledDeck(deck);
-}
-
-const shuffledDeck = (deck) => {
-  const newDeck = deck.slice();
-  for (let i = 0; i < 54; i++) {
-    let j = Math.floor(Math.random() * 54)
-    const aux = newDeck[j];
-    newDeck[j] = newDeck[i];
-    newDeck[i] = aux;
-  }
-  return newDeck;
-}
-
-
-let p1;
-let p2;
-let hands = {};
-let gamePile = createDeck();
-let discardPile = [];
 const rooms = {};
 
 const generateRoomCode = () => {
@@ -57,22 +25,74 @@ const generateRoomCode = () => {
   return result;
 }
 
+const sendGameState = (roomCode) => {
+  const room = rooms[roomCode];
+  if (!room) return;
+
+  // Send state to p1
+  if (room.p1 && room.p1.id) {
+    io.to(room.p1.id).emit('gameStateUpdate', {
+      pile: room.gamePile,
+      discardPile: room.discardPile,
+      myHand: room.p1.hand,
+      rivalHand: room.p2 ? room.p2.hand.map(() => null) : [null, null, null, null] // Hide rival's cards
+    });
+  }
+
+  // Send state to p2
+  if (room.p2 && room.p2.id) {
+    io.to(room.p2.id).emit('gameStateUpdate', {
+      pile: room.gamePile,
+      discardPile: room.discardPile,
+      myHand: room.p2.hand,
+      rivalHand: room.p1 ? room.p1.hand.map(() => null) : [null, null, null, null]
+    });
+  }
+};
 
 io.on('connection', (socket) => {
-  console.log('A user connected:', socket.id, 'creating pile...');
+  console.log('A user connected:', socket.id);
 
   socket.on('createRoom', (nickname) => {
     let roomCode = generateRoomCode();
     while (rooms[roomCode]) {
       roomCode = generateRoomCode();
     }
+    
+    const deck = createDeck();
     rooms[roomCode] = {
+      gamePile: deck,
+      discardPile: [],
       p1: {
-        id: socket.id, nickname: nickname,
-        hand: [gamePile.pop(), gamePile.pop(), gamePile.pop(), gamePile.pop()]
-      }
+        id: socket.id, 
+        nickname: nickname,
+        hand: [deck.pop(), deck.pop(), deck.pop(), deck.pop()]
+      },
+      p2: null
     };
+    
+    console.log(`Socket ${socket.id} created and joined room ${roomCode}`);
     socket.join(roomCode);
+    socket.emit('roomCreated', roomCode, rooms[roomCode].p1.hand);
+  });
+
+  socket.on('joinRoom', (nickname, roomCode) => {
+    const room = rooms[roomCode];
+    if (room && !room.p2) {
+      room.p2 = {
+        id: socket.id,
+        nickname: nickname,
+        hand: [room.gamePile.pop(), room.gamePile.pop(), room.gamePile.pop(), room.gamePile.pop()]
+      };
+      socket.join(roomCode);
+      console.log(`Socket ${socket.id} joined room ${roomCode}`);
+      
+      // Start the game for both players
+      io.to(roomCode).emit('gameStart');
+      sendGameState(roomCode);
+    } else {
+      socket.emit('error', 'Room full or not found');
+    }
   });
 
   socket.on('disconnect', () => {
