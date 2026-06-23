@@ -267,3 +267,9 @@ h1::after {
 .btn-success:hover {
     background-color: #27ae60;
 }
+
+.btn-reveal {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+}

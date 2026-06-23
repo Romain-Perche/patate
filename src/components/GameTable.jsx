@@ -1,13 +1,16 @@
-export default function GameTable({ pile_length, discardPile, drawnCard, handlePileClick, handleDiscardDrawnCard, handleKeepDrawnCard }) {
-  const renderHiddenHand = (prefix) => {
-    return [0, 1, 2, 3].map((index) => (
-      <img
-        key={`${prefix}-${index}`}
-        src={'/images/cards/back.png'}
-        alt="Hidden card"
-        className={`card-image ${prefix}-card`}
-      />
-    ));
+export default function GameTable({ pile_length, discardPile, drawnCard, myHand, rivalHand, isRevealed, handlePileClick, handleDiscardDrawnCard, handleKeepDrawnCard, handleToggleReveal }) {
+  const renderHand = (hand, prefix) => {
+    return hand.map((card, index) => {
+      if (!card) return <div key={`${prefix}-${index}`} className="empty-slot">Empty</div>;
+      return (
+        <img
+          key={`${prefix}-${index}`}
+          src={card === 'hidden' ? '/images/cards/back.png' : `/images/cards/${card}.png`}
+          alt={`${prefix} card`}
+          className={`card-image ${prefix}-card`}
+        />
+      );
+    });
   };
 
   return (
@@ -50,12 +53,19 @@ export default function GameTable({ pile_length, discardPile, drawnCard, handleP
 
       <div className='hands'>
         <div className="cards">
-          {renderHiddenHand('rival')}
+          {renderHand(rivalHand, 'rival')}
         </div>
         <div className="cards">
-          {renderHiddenHand('my')}
+          {renderHand(myHand, 'my')}
         </div>
       </div>
+
+      <button 
+        className={`btn btn-reveal ${isRevealed ? 'btn-danger' : 'btn-success'}`} 
+        onClick={handleToggleReveal}
+      >
+        {isRevealed ? 'Hide Game' : 'Reveal Game'}
+      </button>
     </main>
   );
 }

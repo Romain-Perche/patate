@@ -29,12 +29,21 @@ const sendGameState = (roomCode) => {
   const room = rooms[roomCode];
   if (!room) return;
 
+  const getHand = (hand, isRevealed, reverse = false) => {
+    if (!hand) return [null, null, null, null];
+    const processedHand = isRevealed ? [...hand] : hand.map(c => c ? 'hidden' : null);
+    return reverse ? processedHand.reverse() : processedHand;
+  };
+
   // Send state to p1
   if (room.p1 && room.p1.id) {
     io.to(room.p1.id).emit('gameStateUpdate', {
       pile_length: room.gamePile.length,
       discardPile: room.discardPile,
       drawnCard: room.p1.drawnCard,
+      myHand: getHand(room.p1.hand, room.isRevealed, false),
+      rivalHand: getHand(room.p2 ? room.p2.hand : null, room.isRevealed, true),
+      isRevealed: room.isRevealed
     });
   }
 
@@ -44,6 +53,9 @@ const sendGameState = (roomCode) => {
       pile_length: room.gamePile.length,
       discardPile: room.discardPile,
       drawnCard: room.p2.drawnCard,
+      myHand: getHand(room.p2.hand, room.isRevealed, false),
+      rivalHand: getHand(room.p1 ? room.p1.hand : null, room.isRevealed, true),
+      isRevealed: room.isRevealed
     });
   }
 };
@@ -62,6 +74,7 @@ io.on('connection', (socket) => {
     rooms[roomCode] = {
       gamePile: deck,
       discardPile: [],
+      isRevealed: false,
       p1: {
         id: socket.id,
         nickname: nickname,
@@ -123,6 +136,19 @@ io.on('connection', (socket) => {
         player.drawnCard = null;
         sendGameState(roomCode);
       }
+    }
+  });
+
+  socket.on('keepDrawnCard', (roomCode) => {
+    // "doesn't do anything for now"
+    console.log(`Player ${socket.id} chose 'Choisir' in room ${roomCode}`);
+  });
+
+  socket.on('toggleReveal', (roomCode) => {
+    const room = rooms[roomCode];
+    if (room) {
+      room.isRevealed = !room.isRevealed;
+      sendGameState(roomCode);
     }
   });
 

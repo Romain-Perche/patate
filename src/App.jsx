@@ -11,11 +11,12 @@ export function App() {
   const [nickname, setNickname] = useState('');
   const [roomCodeInput, setRoomCodeInput] = useState('');
   const [currentRoom, setCurrentRoom] = useState(null);
-
   const [pileLength, setPileLength] = useState(0);
   const [discardPile, setDiscardPile] = useState([]);
   const [drawnCard, setDrawnCard] = useState(null);
-  const [isFacedUp, setIsFacedUp] = useState(Array(8).fill(false));
+  const [myHand, setMyHand] = useState(Array(4).fill(null));
+  const [rivalHand, setRivalHand] = useState(Array(4).fill(null));
+  const [isRevealed, setIsRevealed] = useState(false);
 
   const handlePileClick = () => {
     if (pileLength === 0) return;
@@ -37,6 +38,9 @@ export function App() {
       setPileLength(gameState.pile_length);
       setDiscardPile(gameState.discardPile);
       setDrawnCard(gameState.drawnCard);
+      setMyHand(gameState.myHand);
+      setRivalHand(gameState.rivalHand);
+      setIsRevealed(gameState.isRevealed);
     });
 
     return () => {
@@ -91,9 +95,13 @@ export function App() {
           pile_length={pileLength}
           discardPile={discardPile}
           drawnCard={drawnCard}
+          myHand={myHand}
+          rivalHand={rivalHand}
+          isRevealed={isRevealed}
           handlePileClick={handlePileClick}
           handleDiscardDrawnCard={() => socket.emit('discardDrawnCard', currentRoom)}
           handleKeepDrawnCard={() => socket.emit('keepDrawnCard', currentRoom)}
+          handleToggleReveal={() => socket.emit('toggleReveal', currentRoom)}
         />
       )}
     </div>
