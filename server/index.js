@@ -32,23 +32,22 @@ const sendGameState = (roomCode) => {
   // Send state to p1
   if (room.p1 && room.p1.id) {
     io.to(room.p1.id).emit('gameStateUpdate', {
-      pile: room.gamePile,
+      pile_length: room.gamePile.length,
       discardPile: room.discardPile,
-      myHand: room.p1.hand,
-      rivalHand: room.p2 ? room.p2.hand.map(() => null) : [null, null, null, null] // Hide rival's cards
+      drawnCard: room.p1.drawnCard,
     });
   }
 
   // Send state to p2
   if (room.p2 && room.p2.id) {
     io.to(room.p2.id).emit('gameStateUpdate', {
-      pile: room.gamePile,
+      pile_length: room.gamePile.length,
       discardPile: room.discardPile,
-      myHand: room.p2.hand,
-      rivalHand: room.p1 ? room.p1.hand.map(() => null) : [null, null, null, null]
+      drawnCard: room.p2.drawnCard,
     });
   }
 };
+
 
 io.on('connection', (socket) => {
   console.log('A user connected:', socket.id);
@@ -58,22 +57,23 @@ io.on('connection', (socket) => {
     while (rooms[roomCode]) {
       roomCode = generateRoomCode();
     }
-    
+
     const deck = createDeck();
     rooms[roomCode] = {
       gamePile: deck,
       discardPile: [],
       p1: {
-        id: socket.id, 
+        id: socket.id,
         nickname: nickname,
-        hand: [deck.pop(), deck.pop(), deck.pop(), deck.pop()]
+        hand: [deck.pop(), deck.pop(), deck.pop(), deck.pop()],
+        drawnCard: null
       },
       p2: null
     };
-    
+
     console.log(`Socket ${socket.id} created and joined room ${roomCode}`);
     socket.join(roomCode);
-    socket.emit('roomCreated', roomCode, rooms[roomCode].p1.hand);
+    socket.emit('roomJoined', roomCode);
   });
 
   socket.on('joinRoom', (nickname, roomCode) => {
@@ -82,16 +82,47 @@ io.on('connection', (socket) => {
       room.p2 = {
         id: socket.id,
         nickname: nickname,
-        hand: [room.gamePile.pop(), room.gamePile.pop(), room.gamePile.pop(), room.gamePile.pop()]
+        hand: [room.gamePile.pop(), room.gamePile.pop(), room.gamePile.pop(), room.gamePile.pop()], // give p2 their hand!
+        drawnCard: null
       };
       socket.join(roomCode);
+      socket.emit('roomJoined', roomCode);
       console.log(`Socket ${socket.id} joined room ${roomCode}`);
-      
+
       // Start the game for both players
       io.to(roomCode).emit('gameStart');
       sendGameState(roomCode);
     } else {
       socket.emit('error', 'Room full or not found');
+    }
+  });
+
+  socket.on('drawFromPile', (roomCode) => {
+    const room = rooms[roomCode];
+    if (room && room.gamePile.length > 0) {
+      let player = null;
+      if (room.p1.id === socket.id) player = room.p1;
+      else player = room.p2;
+
+      if (!player.drawnCard) {
+        player.drawnCard = room.gamePile.pop();
+        sendGameState(roomCode);
+      }
+    }
+  });
+
+  socket.on('discardDrawnCard', (roomCode) => {
+    const room = rooms[roomCode];
+    if (room) {
+      let player = null;
+      if (room.p1.id === socket.id) player = room.p1;
+      else player = room.p2;
+
+      if (player.drawnCard) {
+        room.discardPile.push(player.drawnCard);
+        player.drawnCard = null;
+        sendGameState(roomCode);
+      }
     }
   });
 

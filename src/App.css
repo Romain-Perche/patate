@@ -83,6 +83,7 @@ h1::after {
     /* pile | hands | spacer */
     align-items: center;
     gap: 3rem;
+    position: relative;
 }
 
 /* --- Card Styles --- */
@@ -206,4 +207,63 @@ h1::after {
         9px 9px 0px rgba(0, 0, 0, 0.3),
         20px 20px 30px rgba(0, 0, 0, 0.7),
         0 0 25px 10px rgb(144, 11, 142);
+}
+
+.discard-pile {
+    min-height: 150px;
+    min-width: 100px;
+    display: flex;
+    justify-content: center;
+}
+
+.drawn-card-area {
+    position: absolute;
+    right: 50px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.drawn-card-area .card-image {
+    width: 120px;
+}
+
+.drawn-card-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn {
+    padding: 8px 16px;
+    cursor: pointer;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-family: inherit;
+    font-weight: bold;
+    font-size: 1rem;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.btn:active {
+    transform: scale(0.95);
+}
+
+.btn-danger {
+    background-color: #e74c3c;
+}
+
+.btn-danger:hover {
+    background-color: #c0392b;
+}
+
+.btn-success {
+    background-color: #2ecc71;
+}
+
+.btn-success:hover {
+    background-color: #27ae60;
 }

@@ -12,22 +12,18 @@ export function App() {
   const [roomCodeInput, setRoomCodeInput] = useState('');
   const [currentRoom, setCurrentRoom] = useState(null);
 
-  const [pile, setPile] = useState([]);
+  const [pileLength, setPileLength] = useState(0);
   const [discardPile, setDiscardPile] = useState([]);
-  const [MyCards, setMyCards] = useState(Array(4).fill(null));
-  const [YourCards, setYourCards] = useState(Array(4).fill(null));
+  const [drawnCard, setDrawnCard] = useState(null);
   const [isFacedUp, setIsFacedUp] = useState(Array(8).fill(false));
 
   const handlePileClick = () => {
-    if (pile.length === 0) return;
-    const newPile = [...pile];
-    const drawnCard = newPile.pop();
-    setPile(newPile);
-    setDiscardPile([...discardPile, drawnCard]);
+    if (pileLength === 0) return;
+    socket.emit('drawFromPile', currentRoom);
   };
 
   useEffect(() => {
-    socket.on('roomCreated', (code, my_hand) => {
+    socket.on('roomJoined', (code) => {
       setCurrentRoom(code);
       setScreen('waiting');
     });
@@ -38,10 +34,9 @@ export function App() {
 
     socket.on('gameStateUpdate', (gameState) => {
       console.log('gamestate : ', gameState);
-      setPile(gameState.pile);
+      setPileLength(gameState.pile_length);
       setDiscardPile(gameState.discardPile);
-      setMyCards(gameState.myHand);
-      setYourCards(gameState.rivalHand);
+      setDrawnCard(gameState.drawnCard);
     });
 
     return () => {
@@ -77,7 +72,7 @@ export function App() {
       </header>
 
       {screen === 'menu' && (
-        <Menu 
+        <Menu
           nickname={nickname} setNickname={setNickname}
           roomCodeInput={roomCodeInput} setRoomCodeInput={setRoomCodeInput}
           CreateRoom={CreateRoom} JoinRoom={JoinRoom}
@@ -92,12 +87,13 @@ export function App() {
       )}
 
       {screen === 'game' && (
-        <GameTable 
-          pile={pile}
+        <GameTable
+          pile_length={pileLength}
           discardPile={discardPile}
-          MyCards={MyCards}
-          YourCards={YourCards}
+          drawnCard={drawnCard}
           handlePileClick={handlePileClick}
+          handleDiscardDrawnCard={() => socket.emit('discardDrawnCard', currentRoom)}
+          handleKeepDrawnCard={() => socket.emit('keepDrawnCard', currentRoom)}
         />
       )}
     </div>

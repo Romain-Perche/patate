@@ -1,9 +1,20 @@
-export default function GameTable({ pile, discardPile, MyCards, YourCards, handlePileClick }) {
+export default function GameTable({ pile_length, discardPile, drawnCard, handlePileClick, handleDiscardDrawnCard, handleKeepDrawnCard }) {
+  const renderHiddenHand = (prefix) => {
+    return [0, 1, 2, 3].map((index) => (
+      <img
+        key={`${prefix}-${index}`}
+        src={'/images/cards/back.png'}
+        alt="Hidden card"
+        className={`card-image ${prefix}-card`}
+      />
+    ));
+  };
+
   return (
     <main className="game-table">
       <div className="pile-area">
         <div className='pile'>
-          {pile.length > 0 && (
+          {pile_length > 0 && (
             <img
               src="/images/cards/back.png"
               alt="Pile"
@@ -12,7 +23,7 @@ export default function GameTable({ pile, discardPile, MyCards, YourCards, handl
             />
           )}
         </div>
-        <div className='discard-pile' style={{ minHeight: '150px', minWidth: '100px', display: 'flex', justifyContent: 'center' }}>
+        <div className='discard-pile'>
           {discardPile.length > 0 && (
             <img
               src={`/images/cards/${discardPile[discardPile.length - 1]}.png`}
@@ -22,32 +33,27 @@ export default function GameTable({ pile, discardPile, MyCards, YourCards, handl
           )}
         </div>
       </div>
+
+      {drawnCard && (
+        <div className="drawn-card-area">
+          <img
+            src={`/images/cards/${drawnCard}.png`}
+            alt="Drawn card"
+            className='card-image'
+          />
+          <div className="drawn-card-actions">
+            <button className="btn btn-danger" onClick={handleDiscardDrawnCard}>Jeter</button>
+            <button className="btn btn-success" onClick={handleKeepDrawnCard}>Choisir</button>
+          </div>
+        </div>
+      )}
+
       <div className='hands'>
         <div className="cards">
-          {YourCards.map((card, index) => {
-            if (!card) return <div key={`rival-${index}`} className="empty-slot">Empty</div>;
-            return (
-              <img
-                key={`rival-${index}`}
-                src={'/images/cards/back.png'}
-                alt="Rival card"
-                className="card-image rival-card"
-              />
-            );
-          })}
+          {renderHiddenHand('rival')}
         </div>
         <div className="cards">
-          {MyCards.map((card, index) => {
-            if (!card) return <div key={`my-${index}`} className="empty-slot">Empty</div>;
-            return (
-              <img
-                key={`my-${index}`}
-                src={`/images/cards/back.png`}
-                alt="My card"
-                className="card-image my-card"
-              />
-            );
-          })}
+          {renderHiddenHand('my')}
         </div>
       </div>
     </main>
