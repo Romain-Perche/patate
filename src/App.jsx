@@ -18,6 +18,7 @@ export function App() {
   const [rivalHand, setRivalHand] = useState(Array(4).fill(null));
   const [isRevealed, setIsRevealed] = useState(false);
   const [isReplacing, setIsReplacing] = useState(false);
+  const [currentTurnName, setCurrentTurnName] = useState('');
 
   const handlePileClick = () => {
     if (pileLength === 0) return;
@@ -42,6 +43,7 @@ export function App() {
       setMyHand(gameState.myHand);
       setRivalHand(gameState.rivalHand);
       setIsRevealed(gameState.isRevealed);
+      setCurrentTurnName(gameState.currentTurnName);
     });
 
     return () => {
@@ -73,7 +75,11 @@ export function App() {
     <div className="game-container">
       <header>
         <h1>Patate</h1>
-        {currentRoom && <div className="room-info">Room Code: {currentRoom}</div>}
+        {currentRoom && screen === 'game' ? (
+          <div className="room-info">C'est à {currentTurnName} de jouer</div>
+        ) : currentRoom ? (
+          <div className="room-info">Room Code: {currentRoom}</div>
+        ) : null}
       </header>
 
       {screen === 'menu' && (

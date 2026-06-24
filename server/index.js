@@ -35,6 +35,8 @@ const sendGameState = (roomCode) => {
     return reverse ? processedHand.reverse() : processedHand;
   };
 
+  const currentTurnName = room.currentTurn === room.p1.id ? room.p1.nickname : (room.p2 ? room.p2.nickname : '');
+
   // Send state to p1
   if (room.p1 && room.p1.id) {
     io.to(room.p1.id).emit('gameStateUpdate', {
@@ -43,7 +45,8 @@ const sendGameState = (roomCode) => {
       drawnCard: room.p1.drawnCard,
       myHand: getHand(room.p1.hand, room.isRevealed, false),
       rivalHand: getHand(room.p2 ? room.p2.hand : null, room.isRevealed, true),
-      isRevealed: room.isRevealed
+      isRevealed: room.isRevealed,
+      currentTurnName
     });
   }
 
@@ -55,7 +58,8 @@ const sendGameState = (roomCode) => {
       drawnCard: room.p2.drawnCard,
       myHand: getHand(room.p2.hand, room.isRevealed, false),
       rivalHand: getHand(room.p1 ? room.p1.hand : null, room.isRevealed, true),
-      isRevealed: room.isRevealed
+      isRevealed: room.isRevealed,
+      currentTurnName
     });
   }
 };
@@ -81,7 +85,8 @@ io.on('connection', (socket) => {
         hand: [deck.pop(), deck.pop(), deck.pop(), deck.pop()],
         drawnCard: null
       },
-      p2: null
+      p2: null,
+      currentTurn: socket.id
     };
 
     console.log(`Socket ${socket.id} created and joined room ${roomCode}`);
@@ -112,7 +117,7 @@ io.on('connection', (socket) => {
 
   socket.on('drawFromPile', (roomCode) => {
     const room = rooms[roomCode];
-    if (room && room.gamePile.length > 0) {
+    if (room && room.currentTurn === socket.id && room.gamePile.length > 0) {
       let player = null;
       if (room.p1.id === socket.id) player = room.p1;
       else player = room.p2;
@@ -126,7 +131,7 @@ io.on('connection', (socket) => {
 
   socket.on('discardDrawnCard', (roomCode) => {
     const room = rooms[roomCode];
-    if (room) {
+    if (room && room.currentTurn === socket.id) {
       let player = null;
       if (room.p1.id === socket.id) player = room.p1;
       else player = room.p2;
@@ -134,6 +139,7 @@ io.on('connection', (socket) => {
       if (player.drawnCard) {
         room.discardPile.push(player.drawnCard);
         player.drawnCard = null;
+        room.currentTurn = room.currentTurn === room.p1.id ? room.p2.id : room.p1.id;
         sendGameState(roomCode);
       }
     }
@@ -141,13 +147,16 @@ io.on('connection', (socket) => {
 
   socket.on('replaceCard', (roomCode, index) => {
     const room = rooms[roomCode];
-    if (room) {
+    if (room && room.currentTurn === socket.id) {
       let player = room.p1.id === socket.id ? room.p1 : room.p2;
-      const oldCard = player.hand[index];
-      player.hand[index] = player.drawnCard;
-      room.discardPile.push(oldCard);
-      player.drawnCard = null;
-      sendGameState(roomCode);
+      if (player && player.drawnCard) {
+        const oldCard = player.hand[index];
+        player.hand[index] = player.drawnCard;
+        room.discardPile.push(oldCard);
+        player.drawnCard = null;
+        room.currentTurn = room.currentTurn === room.p1.id ? room.p2.id : room.p1.id;
+        sendGameState(roomCode);
+      }
     }
   });
 
