@@ -139,9 +139,16 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('keepDrawnCard', (roomCode) => {
-    // "doesn't do anything for now"
-    console.log(`Player ${socket.id} chose 'Choisir' in room ${roomCode}`);
+  socket.on('replaceCard', (roomCode, index) => {
+    const room = rooms[roomCode];
+    if (room) {
+      let player = room.p1.id === socket.id ? room.p1 : room.p2;
+      const oldCard = player.hand[index];
+      player.hand[index] = player.drawnCard;
+      room.discardPile.push(oldCard);
+      player.drawnCard = null;
+      sendGameState(roomCode);
+    }
   });
 
   socket.on('toggleReveal', (roomCode) => {

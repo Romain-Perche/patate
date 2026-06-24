@@ -17,6 +17,7 @@ export function App() {
   const [myHand, setMyHand] = useState(Array(4).fill(null));
   const [rivalHand, setRivalHand] = useState(Array(4).fill(null));
   const [isRevealed, setIsRevealed] = useState(false);
+  const [isReplacing, setIsReplacing] = useState(false);
 
   const handlePileClick = () => {
     if (pileLength === 0) return;
@@ -99,9 +100,19 @@ export function App() {
           rivalHand={rivalHand}
           isRevealed={isRevealed}
           handlePileClick={handlePileClick}
-          handleDiscardDrawnCard={() => socket.emit('discardDrawnCard', currentRoom)}
-          handleKeepDrawnCard={() => socket.emit('keepDrawnCard', currentRoom)}
+          handleDiscardDrawnCard={() => {
+            socket.emit('discardDrawnCard', currentRoom);
+            setIsReplacing(false);
+          }}
+          handleKeepDrawnCard={() => setIsReplacing(true)}
           handleToggleReveal={() => socket.emit('toggleReveal', currentRoom)}
+          isReplacing={isReplacing}
+          handleMyCardClick={(index) => {
+            if (isReplacing) {
+              socket.emit('replaceCard', currentRoom, index);
+              setIsReplacing(false);
+            }
+          }}
         />
       )}
     </div>

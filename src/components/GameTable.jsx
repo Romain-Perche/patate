@@ -1,4 +1,4 @@
-export default function GameTable({ pile_length, discardPile, drawnCard, myHand, rivalHand, isRevealed, handlePileClick, handleDiscardDrawnCard, handleKeepDrawnCard, handleToggleReveal }) {
+export default function GameTable({ pile_length, discardPile, drawnCard, myHand, rivalHand, isRevealed, handlePileClick, handleDiscardDrawnCard, handleKeepDrawnCard, handleToggleReveal, isReplacing, handleMyCardClick }) {
   const renderHand = (hand, prefix) => {
     return hand.map((card, index) => {
       if (!card) return <div key={`${prefix}-${index}`} className="empty-slot">Empty</div>;
@@ -8,6 +8,11 @@ export default function GameTable({ pile_length, discardPile, drawnCard, myHand,
           src={card === 'hidden' ? '/images/cards/back.png' : `/images/cards/${card}.png`}
           alt={`${prefix} card`}
           className={`card-image ${prefix}-card`}
+          onClick={() => {
+            if (isReplacing && prefix === 'my') {
+              handleMyCardClick(index);
+            }
+          }}
         />
       );
     });
@@ -45,8 +50,14 @@ export default function GameTable({ pile_length, discardPile, drawnCard, myHand,
             className='card-image'
           />
           <div className="drawn-card-actions">
-            <button className="btn btn-danger" onClick={handleDiscardDrawnCard}>Jeter</button>
-            <button className="btn btn-success" onClick={handleKeepDrawnCard}>Choisir</button>
+            {!isReplacing ? (
+              <>
+                <button className="btn btn-danger" onClick={handleDiscardDrawnCard}>Jeter</button>
+                <button className="btn btn-success" onClick={handleKeepDrawnCard}>Choisir</button>
+              </>
+            ) : (
+              <p className="replace-instruction">Choisis une carte à remplacer</p>
+            )}
           </div>
         </div>
       )}

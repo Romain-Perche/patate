@@ -117,6 +117,8 @@ h1::after {
     box-shadow: 0px 10px 20px rgba(255, 60, 60);
 }
 
+
+
 .discard-card:hover {
     box-shadow: 0px 10px 20px rgb(144, 11, 142);
     ;
@@ -228,12 +230,24 @@ h1::after {
 }
 
 .drawn-card-area .card-image {
-    width: 120px;
+    width: 150px;
+}
+
+.drawn-card-area .card-image:hover {
+    box-shadow: 0px 10px 20px rgb(144, 11, 142);
 }
 
 .drawn-card-actions {
     display: flex;
     gap: 10px;
+}
+
+.replace-instruction {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: var(--accent-gold);
+    text-align: center;
+    text-shadow: 1px 1px 2px var(--shadow-color);
 }
 
 .btn {
