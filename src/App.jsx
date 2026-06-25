@@ -19,10 +19,20 @@ export function App() {
   const [isRevealed, setIsRevealed] = useState(false);
   const [isReplacing, setIsReplacing] = useState(false);
   const [currentTurnName, setCurrentTurnName] = useState('');
+  const [phase, setPhase] = useState('turn');
+  const [matchTimeRemaining, setMatchTimeRemaining] = useState(0);
+  const [mySkipNextTurn, setMySkipNextTurn] = useState(false);
+  const [rivalSkipNextTurn, setRivalSkipNextTurn] = useState(false);
+  const [isMatching, setIsMatching] = useState(false);
 
   const handlePileClick = () => {
     if (pileLength === 0) return;
     socket.emit('drawFromPile', currentRoom);
+  };
+
+  const handleDiscardPileClick = () => {
+    if (discardPile.length === 0) return;
+    socket.emit('drawFromDiscard', currentRoom);
   };
 
   useEffect(() => {
@@ -44,6 +54,16 @@ export function App() {
       setRivalHand(gameState.rivalHand);
       setIsRevealed(gameState.isRevealed);
       setCurrentTurnName(gameState.currentTurnName);
+      setPhase(gameState.phase);
+      setMatchTimeRemaining(gameState.matchTimeRemaining);
+      setMySkipNextTurn(gameState.mySkipNextTurn);
+      setRivalSkipNextTurn(gameState.rivalSkipNextTurn);
+      
+      if (gameState.drawnFromDiscard) {
+        setIsReplacing(true);
+      } else if (!gameState.drawnCard) {
+        setIsReplacing(false);
+      }
     });
 
     return () => {
@@ -54,6 +74,28 @@ export function App() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (phase === 'turn') {
+      setIsMatching(false);
+    }
+  }, [phase]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (phase === 'match' && !isMatching) {
+        if (e.key === 'Enter') {
+          if (mySkipNextTurn) return;
+          socket.emit('declareMatch', currentRoom);
+          setIsMatching(true);
+        } else if (e.key === 'Backspace') {
+          socket.emit('skipMatchPhase', currentRoom);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [phase, isMatching, currentRoom, mySkipNextTurn]);
 
   const CreateRoom = () => {
     if (nickname) {
@@ -106,6 +148,7 @@ export function App() {
           rivalHand={rivalHand}
           isRevealed={isRevealed}
           handlePileClick={handlePileClick}
+          handleDiscardPileClick={handleDiscardPileClick}
           handleDiscardDrawnCard={() => {
             socket.emit('discardDrawnCard', currentRoom);
             setIsReplacing(false);
@@ -118,6 +161,19 @@ export function App() {
               socket.emit('replaceCard', currentRoom, index);
               setIsReplacing(false);
             }
+          }}
+          phase={phase}
+          matchTimeRemaining={matchTimeRemaining}
+          mySkipNextTurn={mySkipNextTurn}
+          rivalSkipNextTurn={rivalSkipNextTurn}
+          isMatching={isMatching}
+          submitMatch={(indice) => {
+            socket.emit('submitMatch', currentRoom, indice);
+            setIsMatching(false);
+          }}
+          cancelMatch={() => {
+            socket.emit('cancelMatch', currentRoom);
+            setIsMatching(false);
           }}
         />
       )}
