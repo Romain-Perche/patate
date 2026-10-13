@@ -1,27 +1,43 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 export default function GameTable({
-  pile_length, discardPile, drawnCard, myHand, rivalHand, isRevealed,
-  handlePileClick, handleDiscardPileClick, handleDiscardDrawnCard, handleKeepDrawnCard, handleToggleReveal,
+  pile_length, discardPile, drawnCard, myHand, rivalHand,
+  handlePileClick, handleDiscardPileClick, handleDiscardDrawnCard, handleKeepDrawnCard,
   isReplacing, handleMyCardClick,
-  phase, matchTimeRemaining, mySkipNextTurn, rivalSkipNextTurn, isMatching, submitMatch, cancelMatch
+  phase, matchTimeRemaining, mySkipNextTurn, rivalSkipNextTurn, isMatching, submitMatch, cancelMatch,
+  patateCalled, handlePatate,
+  peeksLeft, peeked, handlePeek, myScore, rivalScore, handlePlayAgain,
+  power, handleQueenLook, handleJackSwap, handleSkipPower
 }) {
+  const [picked, setPicked] = useState([]); // Jack: the (up to 2) cards chosen to swap
+  const myPower = power?.mine ? power.type : null;
+  const isPicked = (who, index) => picked.some(s => s.who === who && s.index === index);
+  const togglePick = (who, index) => setPicked(p =>
+    isPicked(who, index) ? p.filter(s => !(s.who === who && s.index === index))
+      : p.length < 2 ? [...p, { who, index }] : p);
 
   const renderHand = (hand, prefix) => {
     return hand.map((card, index) => {
       if (!card) return <div key={`${prefix}-${index}`} className="empty-slot">Empty</div>;
+      const shownCard = peeked[`${prefix}-${index}`] || card;
 
       return (
         <img
           key={`${prefix}-${index}`}
-          src={card === 'hidden' ? '/images/cards/back.png' : `/images/cards/${card}.png`}
+          src={shownCard === 'hidden' ? '/images/cards/back.png' : `/images/cards/${shownCard}.png`}
           alt={`${prefix} card`}
-          className={`card-image ${prefix}-card`}
+          className={`card-image ${prefix}-card${isPicked(prefix, index) ? ' selected' : ''}`}
           onClick={() => {
-            if (isReplacing && prefix === 'my') {
+            if (myPower === 'queen') {
+              handleQueenLook(prefix, index);
+            } else if (myPower === 'jack') {
+              togglePick(prefix, index);
+            } else if (isReplacing && prefix === 'my') {
               handleMyCardClick(index);
             } else if (isMatching && prefix === 'my') {
               submitMatch(index);
+            } else if (peeksLeft > 0 && prefix === 'my') {
+              handlePeek(index);
             }
           }}
         />
@@ -50,6 +66,49 @@ export default function GameTable({
             }}>Annuler</button>
           </div>
         </div>
+      )}
+
+      {phase === 'power' && power && (
+        <div className="match-banner">
+          {myPower === 'queen' && (
+            <>
+              <h2>Dame !</h2>
+              <p>Clique sur une carte (la tienne ou celle de l'adversaire) pour la regarder.</p>
+            </>
+          )}
+          {myPower === 'jack' && (
+            <>
+              <h2>Valet !</h2>
+              <p>Choisis 2 cartes à échanger ({picked.length}/2).</p>
+              <button className="btn btn-success" disabled={picked.length < 2} onClick={() => {
+                handleJackSwap(picked[0], picked[1]);
+                setPicked([]);
+              }}>Échanger</button>
+            </>
+          )}
+          {!myPower && <h2>L'adversaire utilise le pouvoir {power.type === 'queen' ? "d'une Dame" : "d'un Valet"}...</h2>}
+          {myPower && (
+            <button className="btn btn-danger" onClick={() => {
+              handleSkipPower();
+              setPicked([]);
+            }}>Passer</button>
+          )}
+        </div>
+      )}
+
+      {phase === 'over' && (
+        <div className="match-banner">
+          <h2>Partie terminée !</h2>
+          <p>Toi : {myScore} points — Adversaire : {rivalScore} points</p>
+          <h2>{myScore < rivalScore ? 'Tu gagnes !' : myScore > rivalScore ? 'Tu perds !' : 'Égalité !'}</h2>
+          <button className="btn btn-success" onClick={handlePlayAgain}>Rejouer</button>
+        </div>
+      )}
+      {peeksLeft > 0 && phase !== 'over' && (
+        <div className="skip-banner">Clique sur {peeksLeft} de tes cartes pour les regarder</div>
+      )}
+      {patateCalled && phase !== 'over' && (
+        <div className="skip-banner">Patate ! Dernier tour !</div>
       )}
 
       <div className="skip-banners">
@@ -109,12 +168,9 @@ export default function GameTable({
         </div>
       </div>
 
-      <button
-        className={`btn btn-reveal ${isRevealed ? 'btn-danger' : 'btn-success'}`}
-        onClick={handleToggleReveal}
-      >
-        {isRevealed ? 'Hide Game' : 'Reveal Game'}
-      </button>
+      {phase !== 'over' && !patateCalled && (
+        <button className="btn btn-danger" onClick={handlePatate}>Patate !</button>
+      )}
     </main>
   );
 }

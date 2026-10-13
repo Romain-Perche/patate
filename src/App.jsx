@@ -4,7 +4,7 @@ import { io } from 'socket.io-client';
 import Menu from './components/Menu';
 import GameTable from './components/GameTable';
 
-const socket = io('http://localhost:3000');
+const socket = io();
 
 export function App() {
   const [screen, setScreen] = useState('menu'); // 'menu', 'waiting', 'game'
@@ -16,7 +16,6 @@ export function App() {
   const [drawnCard, setDrawnCard] = useState(null);
   const [myHand, setMyHand] = useState(Array(4).fill(null));
   const [rivalHand, setRivalHand] = useState(Array(4).fill(null));
-  const [isRevealed, setIsRevealed] = useState(false);
   const [isReplacing, setIsReplacing] = useState(false);
   const [currentTurnName, setCurrentTurnName] = useState('');
   const [phase, setPhase] = useState('turn');
@@ -24,6 +23,12 @@ export function App() {
   const [mySkipNextTurn, setMySkipNextTurn] = useState(false);
   const [rivalSkipNextTurn, setRivalSkipNextTurn] = useState(false);
   const [isMatching, setIsMatching] = useState(false);
+  const [patateCalled, setPatateCalled] = useState(false);
+  const [peeksLeft, setPeeksLeft] = useState(0);
+  const [peeked, setPeeked] = useState({}); // 'my-0' / 'rival-3' -> card, shown for a short time
+  const [power, setPower] = useState(null); // { type: 'queen' | 'jack', mine: bool }
+  const [myScore, setMyScore] = useState(null);
+  const [rivalScore, setRivalScore] = useState(null);
 
   const handlePileClick = () => {
     if (pileLength === 0) return;
@@ -52,12 +57,16 @@ export function App() {
       setDrawnCard(gameState.drawnCard);
       setMyHand(gameState.myHand);
       setRivalHand(gameState.rivalHand);
-      setIsRevealed(gameState.isRevealed);
       setCurrentTurnName(gameState.currentTurnName);
       setPhase(gameState.phase);
       setMatchTimeRemaining(gameState.matchTimeRemaining);
       setMySkipNextTurn(gameState.mySkipNextTurn);
       setRivalSkipNextTurn(gameState.rivalSkipNextTurn);
+      setPatateCalled(gameState.patateCalled);
+      setPeeksLeft(gameState.peeksLeft);
+      setPower(gameState.power);
+      setMyScore(gameState.myScore);
+      setRivalScore(gameState.rivalScore);
       
       if (gameState.drawnFromDiscard) {
         setIsReplacing(true);
@@ -66,12 +75,31 @@ export function App() {
       }
     });
 
+    socket.on('joinError', (message) => alert(message));
+
+    socket.on('opponentLeft', () => {
+      alert('Ton adversaire est parti.');
+      setCurrentRoom(null);
+      setScreen('menu');
+    });
+
+    socket.on('peekResult', (who, index, card) => {
+      const key = `${who}-${index}`;
+      setPeeked(p => ({ ...p, [key]: card }));
+      setTimeout(() => setPeeked(p => {
+        const rest = { ...p };
+        delete rest[key];
+        return rest;
+      }), 2000); // ponytail: 2s to memorize, change here if too short
+    });
+
     return () => {
-      if (socket) {
-        socket.off('roomCreated');
-        socket.off('gameStart');
-        socket.off('gameStateUpdate');
-      }
+      socket.off('roomJoined');
+      socket.off('gameStart');
+      socket.off('gameStateUpdate');
+      socket.off('joinError');
+      socket.off('opponentLeft');
+      socket.off('peekResult');
     };
   }, []);
 
@@ -146,7 +174,6 @@ export function App() {
           drawnCard={drawnCard}
           myHand={myHand}
           rivalHand={rivalHand}
-          isRevealed={isRevealed}
           handlePileClick={handlePileClick}
           handleDiscardPileClick={handleDiscardPileClick}
           handleDiscardDrawnCard={() => {
@@ -154,7 +181,6 @@ export function App() {
             setIsReplacing(false);
           }}
           handleKeepDrawnCard={() => setIsReplacing(true)}
-          handleToggleReveal={() => socket.emit('toggleReveal', currentRoom)}
           isReplacing={isReplacing}
           handleMyCardClick={(index) => {
             if (isReplacing) {
@@ -167,6 +193,18 @@ export function App() {
           mySkipNextTurn={mySkipNextTurn}
           rivalSkipNextTurn={rivalSkipNextTurn}
           isMatching={isMatching}
+          patateCalled={patateCalled}
+          handlePatate={() => socket.emit('patate', currentRoom)}
+          peeksLeft={peeksLeft}
+          peeked={peeked}
+          handlePeek={(index) => socket.emit('peekCard', currentRoom, index)}
+          power={power}
+          handleQueenLook={(who, index) => socket.emit('queenLook', currentRoom, who, index)}
+          handleJackSwap={(a, b) => socket.emit('jackSwap', currentRoom, a, b)}
+          handleSkipPower={() => socket.emit('skipPower', currentRoom)}
+          myScore={myScore}
+          rivalScore={rivalScore}
+          handlePlayAgain={() => socket.emit('playAgain', currentRoom)}
           submitMatch={(indice) => {
             socket.emit('submitMatch', currentRoom, indice);
             setIsMatching(false);
