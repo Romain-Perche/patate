@@ -27,6 +27,7 @@ export function App() {
   const [peeksLeft, setPeeksLeft] = useState(0);
   const [peeked, setPeeked] = useState({}); // 'my-0' / 'rival-3' -> card, shown for a short time
   const [power, setPower] = useState(null); // { type: 'queen' | 'jack', mine: bool }
+  const [lastSwap, setLastSwap] = useState(null); // last Jack swap: { id, a: {who, index}, b: {who, index} }
   const [myScore, setMyScore] = useState(null);
   const [rivalScore, setRivalScore] = useState(null);
 
@@ -65,6 +66,7 @@ export function App() {
       setPatateCalled(gameState.patateCalled);
       setPeeksLeft(gameState.peeksLeft);
       setPower(gameState.power);
+      setLastSwap(gameState.lastSwap);
       setMyScore(gameState.myScore);
       setRivalScore(gameState.rivalScore);
       
@@ -109,16 +111,18 @@ export function App() {
     }
   }, [phase]);
 
+  const declareMatch = () => {
+    if (mySkipNextTurn) return;
+    socket.emit('declareMatch', currentRoom);
+    setIsMatching(true);
+  };
+  const skipMatch = () => socket.emit('skipMatchPhase', currentRoom);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (phase === 'match' && !isMatching) {
-        if (e.key === 'Enter') {
-          if (mySkipNextTurn) return;
-          socket.emit('declareMatch', currentRoom);
-          setIsMatching(true);
-        } else if (e.key === 'Backspace') {
-          socket.emit('skipMatchPhase', currentRoom);
-        }
+        if (e.key === 'Enter') declareMatch();
+        else if (e.key === 'Backspace') skipMatch();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -193,12 +197,15 @@ export function App() {
           mySkipNextTurn={mySkipNextTurn}
           rivalSkipNextTurn={rivalSkipNextTurn}
           isMatching={isMatching}
+          declareMatch={declareMatch}
+          skipMatch={skipMatch}
           patateCalled={patateCalled}
           handlePatate={() => socket.emit('patate', currentRoom)}
           peeksLeft={peeksLeft}
           peeked={peeked}
           handlePeek={(index) => socket.emit('peekCard', currentRoom, index)}
           power={power}
+          lastSwap={lastSwap}
           handleQueenLook={(who, index) => socket.emit('queenLook', currentRoom, who, index)}
           handleJackSwap={(a, b) => socket.emit('jackSwap', currentRoom, a, b)}
           handleSkipPower={() => socket.emit('skipPower', currentRoom)}

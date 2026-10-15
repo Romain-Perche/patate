@@ -37,6 +37,14 @@ const sendGameState = (roomCode) => {
 
   const powerFor = (p) => room.power ? { type: room.power.type, mine: room.power.playerId === p.id } : null;
 
+  // Last Jack swap, as each player sees it: 'my' = own hand, 'rival' = rival hand (shown reversed).
+  const swapFor = (p) => {
+    const s = room.lastSwap;
+    if (!s) return null;
+    const view = ({ hand, i }) => hand === p.hand ? { who: 'my', index: i } : { who: 'rival', index: hand.length - 1 - i };
+    return { id: s.id, a: view(s.a), b: view(s.b) };
+  };
+
   const currentTurnName = room.currentTurn === room.p1.id ? room.p1.nickname : (room.p2 ? room.p2.nickname : '');
 
   // Send state to p1
@@ -55,6 +63,7 @@ const sendGameState = (roomCode) => {
       drawnFromDiscard: room.p1.drawnFromDiscard,
       patateCalled: !!room.patateBy,
       power: powerFor(room.p1),
+      lastSwap: swapFor(room.p1),
       peeksLeft: room.p1.peeksLeft,
       myScore: room.phase === 'over' ? handScore(room.p1.hand) : null,
       rivalScore: room.phase === 'over' && room.p2 ? handScore(room.p2.hand) : null
@@ -77,6 +86,7 @@ const sendGameState = (roomCode) => {
       drawnFromDiscard: room.p2.drawnFromDiscard,
       patateCalled: !!room.patateBy,
       power: powerFor(room.p2),
+      lastSwap: swapFor(room.p2),
       peeksLeft: room.p2.peeksLeft,
       myScore: room.phase === 'over' ? handScore(room.p2.hand) : null,
       rivalScore: room.phase === 'over' ? handScore(room.p1.hand) : null
@@ -314,6 +324,7 @@ io.on('connection', (socket) => {
     const y = getSlot(room, socket.id, b?.who, b?.index);
     if (!x || !y || (x.hand === y.hand && x.i === y.i)) return;
     [x.hand[x.i], y.hand[y.i]] = [y.hand[y.i], x.hand[x.i]];
+    room.lastSwap = { id: Date.now(), a: x, b: y };
     finishPower(roomCode);
   });
 
@@ -346,7 +357,7 @@ io.on('connection', (socket) => {
     if (!room || room.phase !== 'over') return;
     const deck = createDeck();
     Object.assign(room, {
-      gamePile: deck, discardPile: [], isRevealed: false, phase: 'turn', patateBy: null,
+      gamePile: deck, discardPile: [], isRevealed: false, phase: 'turn', patateBy: null, lastSwap: null,
       currentTurn: room.p1.id
     });
     for (const p of [room.p1, room.p2]) {
