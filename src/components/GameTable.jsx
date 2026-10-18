@@ -8,7 +8,7 @@ export default function GameTable({
   isReplacing, handleMyCardClick,
   phase, matchTimeRemaining, mySkipNextTurn, rivalSkipNextTurn, isMatching, declareMatch, skipMatch, submitMatch, cancelMatch,
   patateCalled, handlePatate,
-  peeksLeft, peeked, handlePeek, myScore, rivalScore, handlePlayAgain,
+  peeksLeft, rivalPeeking, peeked, handlePeek, myScore, rivalScore, handlePlayAgain,
   power, lastSwap, handleQueenLook, handleJackSwap, handleSkipPower
 }) {
   const [picked, setPicked] = useState([]); // Jack: the (up to 2) cards chosen to swap
@@ -186,6 +186,9 @@ export default function GameTable({
 
         {peeksLeft > 0 && phase !== 'over' && (
           <div className="note">{peeksLeft > 1 ? `Choisis ${peeksLeft} de tes cartes à regarder` : 'Choisis encore 1 de tes cartes à regarder'}</div>
+        )}
+        {rivalPeeking && phase !== 'over' && (
+          <div className="note">L'adversaire regarde ses cartes…</div>
         )}
         {patateCalled && phase !== 'over' && (
           <div className="note note-strong">Patate ! Dernier tour !</div>

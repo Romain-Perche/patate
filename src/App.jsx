@@ -26,6 +26,7 @@ export function App() {
   const [isMatching, setIsMatching] = useState(false);
   const [patateCalled, setPatateCalled] = useState(false);
   const [peeksLeft, setPeeksLeft] = useState(0);
+  const [rivalPeeking, setRivalPeeking] = useState(false);
   const [peeked, setPeeked] = useState({}); // 'my-0' / 'rival-3' -> card, shown for a short time
   const [power, setPower] = useState(null); // { type: 'queen' | 'jack', mine: bool }
   const [lastSwap, setLastSwap] = useState(null); // last Jack swap: { id, a: {who, index}, b: {who, index} }
@@ -67,6 +68,7 @@ export function App() {
       setRivalSkipNextTurn(gameState.rivalSkipNextTurn);
       setPatateCalled(gameState.patateCalled);
       setPeeksLeft(gameState.peeksLeft);
+      setRivalPeeking(gameState.rivalPeeking);
       setPower(gameState.power);
       setLastSwap(gameState.lastSwap);
       setMyScore(gameState.myScore);
@@ -201,6 +203,7 @@ export function App() {
           patateCalled={patateCalled}
           handlePatate={() => socket.emit('patate', currentRoom)}
           peeksLeft={peeksLeft}
+          rivalPeeking={rivalPeeking}
           peeked={peeked}
           handlePeek={(index) => socket.emit('peekCard', currentRoom, index)}
           power={power}

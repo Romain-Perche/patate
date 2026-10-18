@@ -66,6 +66,7 @@ const sendGameState = (roomCode) => {
       power: powerFor(room.p1),
       lastSwap: swapFor(room.p1),
       peeksLeft: room.p1.peeksLeft,
+      rivalPeeking: room.p2 ? room.p2.peeksLeft > 0 : false,
       myScore: room.phase === 'over' ? handScore(room.p1.hand) : null,
       rivalScore: room.phase === 'over' && room.p2 ? handScore(room.p2.hand) : null
     });
@@ -90,6 +91,7 @@ const sendGameState = (roomCode) => {
       power: powerFor(room.p2),
       lastSwap: swapFor(room.p2),
       peeksLeft: room.p2.peeksLeft,
+      rivalPeeking: room.p1.peeksLeft > 0,
       myScore: room.phase === 'over' ? handScore(room.p2.hand) : null,
       rivalScore: room.phase === 'over' ? handScore(room.p1.hand) : null
     });
@@ -155,8 +157,8 @@ const nextTurn = (roomCode) => {
 // backToMatch: the card was thrown in the match phase, so the match phase (and its timer) waits and then goes on.
 const startPower = (roomCode, card, playerId, backToMatch) => {
   const value = card?.split('_')[0];
-  if (value !== 'Q' && value !== 'J') return false;
   const room = rooms[roomCode];
+  if (value !== 'Q' && !(value === 'J' && !room.patateBy)) return false; // Jack has no power after Patate
   room.phase = 'power';
   room.power = { type: value === 'Q' ? 'queen' : 'jack', playerId, backToMatch };
   if (backToMatch) room.pausedMatchTimer = true;
@@ -193,7 +195,8 @@ io.on('connection', (socket) => {
         peeksLeft: 2
       },
       p2: null,
-      currentTurn: socket.id
+      currentTurn: socket.id,
+      starter: socket.id
     };
 
     console.log(`Socket ${socket.id} created and joined room ${roomCode}`);
@@ -231,8 +234,9 @@ io.on('connection', (socket) => {
     const room = rooms[roomCode];
     if (room.currentTurn === socket.id && room.phase === 'turn' && room.gamePile.length > 0) {
       let player = room.p1.id === socket.id ? room.p1 : room.p2;
+      const rival = player === room.p1 ? room.p2 : room.p1;
 
-      if (!player.drawnCard) {
+      if (!player.drawnCard && rival.peeksLeft === 0) {
         player.peeksLeft = 0;
         player.drawnCard = room.gamePile.pop();
         player.drawnFromDiscard = false;
@@ -245,7 +249,8 @@ io.on('connection', (socket) => {
     const room = rooms[roomCode];
     if (room.currentTurn === socket.id && room.phase === 'turn' && room.discardPile.length > 0) {
       let player = room.p1.id === socket.id ? room.p1 : room.p2;
-      if (!player.drawnCard) {
+      const rival = player === room.p1 ? room.p2 : room.p1;
+      if (!player.drawnCard && rival.peeksLeft === 0) {
         player.peeksLeft = 0;
         player.drawnCard = room.discardPile.pop();
         player.drawnFromDiscard = true;
@@ -362,9 +367,10 @@ io.on('connection', (socket) => {
     const room = rooms[roomCode];
     if (!room || room.phase !== 'over') return;
     const deck = createDeck();
+    const starter = room.starter === room.p1.id ? room.p2.id : room.p1.id;
     Object.assign(room, {
       gamePile: deck, discardPile: [], isRevealed: false, phase: 'turn', patateBy: null, lastSwap: null,
-      currentTurn: room.p1.id
+      currentTurn: starter, starter
     });
     for (const p of [room.p1, room.p2]) {
       Object.assign(p, {
