@@ -1,6 +1,6 @@
 import { useState, useRef, useLayoutEffect } from 'react';
 
-const isTouch = window.matchMedia('(pointer: coarse)').matches;
+const points = (n) => `${n} point${Math.abs(n) >= 2 ? 's' : ''}`;
 
 export default function GameTable({
   pile_length, discardPile, drawnCard, myHand, rivalHand,
@@ -38,14 +38,14 @@ export default function GameTable({
 
   const renderHand = (hand, prefix) => {
     return hand.map((card, index) => {
-      if (!card) return <div key={`${prefix}-${index}`} className="empty-slot">Empty</div>;
+      if (!card) return <div key={`${prefix}-${index}`} className="empty-slot">Vide</div>;
       const shownCard = peeked[`${prefix}-${index}`] || card;
 
       return (
         <img
           key={`${prefix}-${index}`}
           src={shownCard === 'hidden' ? '/images/cards/back.png' : `/images/cards/${shownCard}.png`}
-          alt={`${prefix} card`}
+          alt={prefix === 'my' ? 'Ta carte' : "Carte de l'adversaire"}
           data-slot={`${prefix}-${index}`}
           className={`card-image ${prefix}-card${isPicked(prefix, index) ? ' selected' : ''}`}
           onClick={() => {
@@ -68,133 +68,135 @@ export default function GameTable({
 
   return (
     <main className="game-table" ref={tableRef}>
-      {phase === 'match' && !isMatching && (
-        <div className="match-banner">
-          <h2>C'est le moment de jeter vos cartes !</h2>
-          <div className="match-actions">
-            <button className="btn" onClick={declareMatch}>Jeter une carte</button>
-            <button className="btn" onClick={skipMatch}>Passer</button>
-          </div>
-          {!isTouch && <p>Ou appuyez sur <strong>Entrée</strong> pour jeter, <strong>Supprimer</strong> pour passer</p>}
-          <p>Temps restant: {matchTimeRemaining}s</p>
-        </div>
-      )}
-
-      {isMatching && (
-        <div className="match-banner">
-          <h2>Sélectionnez une carte</h2>
-          <p>Cliquez sur l'une de vos cartes pour la jeter.</p>
-          <div className="match-actions">
-            <button className="btn btn-danger" onClick={() => {
-              cancelMatch();
-            }}>Annuler</button>
-          </div>
-        </div>
-      )}
-
-      {phase === 'power' && power && (
-        <div className="match-banner">
-          {myPower === 'queen' && (
-            <>
-              <h2>Dame !</h2>
-              <p>Clique sur une carte (la tienne ou celle de l'adversaire) pour la regarder.</p>
-            </>
-          )}
-          {myPower === 'jack' && (
-            <>
-              <h2>Valet !</h2>
-              <p>Choisis 2 cartes à échanger ({picked.length}/2).</p>
-              <button className="btn btn-success" disabled={picked.length < 2} onClick={() => {
-                handleJackSwap(picked[0], picked[1]);
-                setPicked([]);
-              }}>Échanger</button>
-            </>
-          )}
-          {!myPower && <h2>L'adversaire utilise le pouvoir {power.type === 'queen' ? "d'une Dame" : "d'un Valet"}...</h2>}
-          {myPower && (
-            <button className="btn btn-danger" onClick={() => {
-              handleSkipPower();
-              setPicked([]);
-            }}>Passer</button>
-          )}
-        </div>
-      )}
-
-      {phase === 'over' && (
-        <div className="match-banner">
-          <h2>Partie terminée !</h2>
-          <p>Toi : {myScore} points — Adversaire : {rivalScore} points</p>
-          <h2>{myScore < rivalScore ? 'Tu gagnes !' : myScore > rivalScore ? 'Tu perds !' : 'Égalité !'}</h2>
-          <button className="btn btn-success" onClick={handlePlayAgain}>Rejouer</button>
-        </div>
-      )}
-      {peeksLeft > 0 && phase !== 'over' && (
-        <div className="skip-banner">Clique sur {peeksLeft} de tes cartes pour les regarder</div>
-      )}
-      {patateCalled && phase !== 'over' && (
-        <div className="skip-banner">Patate ! Dernier tour !</div>
-      )}
-
-      <div className="skip-banners">
-        {mySkipNextTurn && <div className="skip-banner">Vous passez votre prochain tour !</div>}
-        {rivalSkipNextTurn && <div className="skip-banner">L'adversaire passe son prochain tour !</div>}
-      </div>
-
       <div className="pile-area">
         <div className='pile'>
           {pile_length > 0 && (
             <img
               src="/images/cards/back.png"
-              alt="Pile"
+              alt="Pioche"
               className='card-image'
               onClick={handlePileClick}
             />
           )}
         </div>
         <div className='discard-pile'>
-          {discardPile.length > 0 && (
+          {discardPile.length > 0 ? (
             <img
               src={`/images/cards/${discardPile[discardPile.length - 1]}.png`}
-              alt="Top Discard"
+              alt="Défausse"
               className='card-image discard-card'
               onClick={handleDiscardPileClick}
             />
-          )}
+          ) : <div className="empty-slot">Défausse</div>}
         </div>
       </div>
 
-      {drawnCard && (
-        <div className="drawn-card-area">
-          <img
-            src={`/images/cards/${drawnCard}.png`}
-            alt="Drawn card"
-            className='card-image'
-          />
-          <div className="drawn-card-actions">
-            {!isReplacing ? (
-              <>
-                <button className="btn btn-danger" onClick={handleDiscardDrawnCard}>Jeter</button>
-                <button className="btn btn-success" onClick={handleKeepDrawnCard}>Choisir</button>
-              </>
-            ) : (
-              <p className="replace-instruction">Choisis une carte à remplacer</p>
-            )}
-          </div>
-        </div>
-      )}
-
       <div className='hands'>
-        <div className="cards">
+        <div className="cards rival-hand">
           {renderHand(rivalHand, 'rival')}
         </div>
-        <div className="cards">
+        <div className="cards my-hand">
           {renderHand(myHand, 'my')}
         </div>
       </div>
 
-      {phase !== 'over' && !patateCalled && (
-        <button className="btn btn-danger" onClick={handlePatate}>Patate !</button>
-      )}
+      <aside className="action-panel">
+        {drawnCard && (
+          <div className="drawn-card-area">
+            <img
+              src={`/images/cards/${drawnCard}.png`}
+              alt="Carte piochée"
+              className='card-image'
+            />
+            <div className="drawn-card-actions">
+              {!isReplacing ? (
+                <>
+                  <button className="btn btn-ghost" onClick={handleDiscardDrawnCard}>Jeter</button>
+                  <button className="btn btn-primary" onClick={handleKeepDrawnCard}>Garder</button>
+                </>
+              ) : (
+                <p className="replace-instruction">Choisis une carte à remplacer</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {phase === 'match' && !isMatching && (
+          <div className="match-banner">
+            <h2>Une carte à jeter ?</h2>
+            <div className="match-actions">
+              <button className="btn btn-primary" onClick={declareMatch}>Jeter une carte</button>
+              <button className="btn btn-ghost" onClick={skipMatch}>Passer</button>
+            </div>
+            <p className="timer">Temps restant : {matchTimeRemaining} s</p>
+          </div>
+        )}
+
+        {isMatching && (
+          <div className="match-banner">
+            <h2>Choisis la carte à jeter</h2>
+            <p>Si elle ne va pas avec la défausse, tu passes ton prochain tour.</p>
+            <div className="match-actions">
+              <button className="btn btn-ghost" onClick={cancelMatch}>Annuler</button>
+            </div>
+          </div>
+        )}
+
+        {phase === 'power' && power && (
+          <div className="match-banner">
+            {myPower === 'queen' && (
+              <>
+                <h2>Dame !</h2>
+                <p>Choisis une carte à regarder : une des tiennes ou une de l'adversaire.</p>
+              </>
+            )}
+            {myPower === 'jack' && (
+              <>
+                <h2>Valet !</h2>
+                <p>Choisis 2 cartes à échanger ({picked.length}/2).</p>
+              </>
+            )}
+            {!myPower && <p>L'adversaire utilise le pouvoir {power.type === 'queen' ? "d'une Dame" : "d'un Valet"}…</p>}
+            {myPower && (
+              <div className="match-actions">
+                {myPower === 'jack' && (
+                  <button className="btn btn-primary" disabled={picked.length < 2} onClick={() => {
+                    handleJackSwap(picked[0], picked[1]);
+                    setPicked([]);
+                  }}>Échanger</button>
+                )}
+                <button className="btn btn-ghost" onClick={() => {
+                  handleSkipPower();
+                  setPicked([]);
+                }}>Passer</button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {phase === 'over' && (
+          <div className="match-banner">
+            <h2>{myScore < rivalScore ? 'Tu gagnes !' : myScore > rivalScore ? 'Tu perds !' : 'Égalité !'}</h2>
+            <p>Toi : {points(myScore)} — Adversaire : {points(rivalScore)}</p>
+            <div className="match-actions">
+              <button className="btn btn-primary" onClick={handlePlayAgain}>Rejouer</button>
+            </div>
+          </div>
+        )}
+
+        {peeksLeft > 0 && phase !== 'over' && (
+          <div className="note">{peeksLeft > 1 ? `Choisis ${peeksLeft} de tes cartes à regarder` : 'Choisis encore 1 de tes cartes à regarder'}</div>
+        )}
+        {patateCalled && phase !== 'over' && (
+          <div className="note note-strong">Patate ! Dernier tour !</div>
+        )}
+        {mySkipNextTurn && <div className="skip-banner">Mauvaise carte : tu passes ton prochain tour</div>}
+        {rivalSkipNextTurn && <div className="skip-banner">Mauvaise carte : l'adversaire passe son prochain tour</div>}
+
+        {phase !== 'over' && !patateCalled && (
+          <button className="btn btn-danger patate-button" onClick={handlePatate}>Patate !</button>
+        )}
+      </aside>
     </main>
   );
 }

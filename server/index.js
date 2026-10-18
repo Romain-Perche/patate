@@ -35,7 +35,7 @@ const sendGameState = (roomCode) => {
     return reverse ? processedHand.reverse() : processedHand;
   };
 
-  const powerFor = (p) => room.power ? { type: room.power.type, mine: room.power.playerId === p.id } : null;
+  const powerFor = (p) => room.power ? { type: room.power.type, mine: room.power.playerId === p.id, looking: !!room.power.looking } : null;
 
   // Last Jack swap, as each player sees it: 'my' = own hand, 'rival' = rival hand (shown reversed).
   const swapFor = (p) => {
@@ -56,6 +56,7 @@ const sendGameState = (roomCode) => {
       myHand: getHand(room.p1.hand, room.isRevealed, false),
       rivalHand: getHand(room.p2 ? room.p2.hand : null, room.isRevealed, true),
       currentTurnName,
+      isMyTurn: room.currentTurn === room.p1.id,
       phase: room.phase,
       matchTimeRemaining: room.matchTimeRemaining,
       mySkipNextTurn: room.p1.skipNextTurn,
@@ -79,6 +80,7 @@ const sendGameState = (roomCode) => {
       myHand: getHand(room.p2.hand, room.isRevealed, false),
       rivalHand: getHand(room.p1 ? room.p1.hand : null, room.isRevealed, true),
       currentTurnName,
+      isMyTurn: room.currentTurn === room.p2.id,
       phase: room.phase,
       matchTimeRemaining: room.matchTimeRemaining,
       mySkipNextTurn: room.p2.skipNextTurn,
@@ -221,7 +223,7 @@ io.on('connection', (socket) => {
       io.to(roomCode).emit('gameStart');
       sendGameState(roomCode);
     } else {
-      socket.emit('joinError', 'Salle introuvable ou déjà pleine.');
+      socket.emit('joinError', 'Aucune partie avec ce code, ou elle est déjà pleine. Vérifie le code.');
     }
   });
 
@@ -292,7 +294,7 @@ io.on('connection', (socket) => {
     return owner.hand[i] ? { hand: owner.hand, i } : null; // null = empty slot or bad index
   };
 
-  const ownsPower = (room, type) => room && room.phase === 'power' && room.power.playerId === socket.id && room.power.type === type;
+  const ownsPower = (room, type) => room && room.phase === 'power' && room.power.playerId === socket.id && room.power.type === type && !room.power.looking;
 
   const finishPower = (roomCode) => {
     const room = rooms[roomCode];
@@ -313,7 +315,11 @@ io.on('connection', (socket) => {
     const slot = getSlot(room, socket.id, who, index);
     if (!slot) return;
     socket.emit('peekResult', who, index, slot.hand[slot.i]);
-    finishPower(roomCode);
+    // Give the player 3s to memorize the card before the game goes on.
+    const power = room.power;
+    power.looking = true;
+    sendGameState(roomCode);
+    setTimeout(() => { if (rooms[roomCode]?.power === power) finishPower(roomCode); }, 3000);
   });
 
   // Blind swap of any 2 different cards (mine or rival's).
@@ -330,7 +336,7 @@ io.on('connection', (socket) => {
 
   socket.on('skipPower', (roomCode) => {
     const room = rooms[roomCode];
-    if (!room || room.phase !== 'power' || room.power.playerId !== socket.id) return;
+    if (!room || room.phase !== 'power' || room.power.playerId !== socket.id || room.power.looking) return;
     finishPower(roomCode);
   });
 

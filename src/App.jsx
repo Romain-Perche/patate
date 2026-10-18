@@ -18,6 +18,7 @@ export function App() {
   const [rivalHand, setRivalHand] = useState(Array(4).fill(null));
   const [isReplacing, setIsReplacing] = useState(false);
   const [currentTurnName, setCurrentTurnName] = useState('');
+  const [isMyTurn, setIsMyTurn] = useState(false);
   const [phase, setPhase] = useState('turn');
   const [matchTimeRemaining, setMatchTimeRemaining] = useState(0);
   const [mySkipNextTurn, setMySkipNextTurn] = useState(false);
@@ -59,6 +60,7 @@ export function App() {
       setMyHand(gameState.myHand);
       setRivalHand(gameState.rivalHand);
       setCurrentTurnName(gameState.currentTurnName);
+      setIsMyTurn(gameState.isMyTurn);
       setPhase(gameState.phase);
       setMatchTimeRemaining(gameState.matchTimeRemaining);
       setMySkipNextTurn(gameState.mySkipNextTurn);
@@ -80,7 +82,7 @@ export function App() {
     socket.on('joinError', (message) => alert(message));
 
     socket.on('opponentLeft', () => {
-      alert('Ton adversaire est parti.');
+      alert('Ton adversaire a quitté la partie.');
       setCurrentRoom(null);
       setScreen('menu');
     });
@@ -92,7 +94,7 @@ export function App() {
         const rest = { ...p };
         delete rest[key];
         return rest;
-      }), 2000); // ponytail: 2s to memorize, change here if too short
+      }), 3000); // ponytail: 3s to memorize (matches the Queen wait on the server), change here if too short
     });
 
     return () => {
@@ -122,7 +124,7 @@ export function App() {
     const handleKeyDown = (e) => {
       if (phase === 'match' && !isMatching) {
         if (e.key === 'Enter') declareMatch();
-        else if (e.key === 'Backspace') skipMatch();
+        else if (e.key === 'Backspace' || e.key === 'Delete') skipMatch();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -133,16 +135,14 @@ export function App() {
     if (nickname) {
       socket.emit('createRoom', nickname);
     } else {
-      alert("Please enter a nickname first ! ");
+      alert('Entre ton pseudo pour créer une partie.');
     }
   };
 
   const JoinRoom = () => {
-    if (nickname && roomCodeInput) {
-      socket.emit('joinRoom', nickname, roomCodeInput);
-    } else {
-      alert("Please enter a nickname and a room code first ! ");
-    }
+    if (!nickname) alert('Entre ton pseudo pour rejoindre une partie.');
+    else if (!roomCodeInput) alert('Entre le code de la partie.');
+    else socket.emit('joinRoom', nickname, roomCodeInput);
   }
 
   return (
@@ -150,9 +150,7 @@ export function App() {
       <header>
         <h1>Patate</h1>
         {currentRoom && screen === 'game' ? (
-          <div className="room-info">C'est à {currentTurnName} de jouer</div>
-        ) : currentRoom ? (
-          <div className="room-info">Room Code: {currentRoom}</div>
+          <div className={`room-info${isMyTurn ? ' my-turn' : ''}`}>{isMyTurn ? 'À toi de jouer' : `C'est à ${currentTurnName} de jouer`}</div>
         ) : null}
       </header>
 
@@ -166,8 +164,9 @@ export function App() {
 
       {screen === 'waiting' && (
         <div className="waiting-screen">
-          <h2>Waiting for opponent...</h2>
-          <p>Share this room code: <strong>{currentRoom}</strong></p>
+          <h2>En attente de ton adversaire…</h2>
+          <p>Envoie-lui ce code :</p>
+          <strong className="room-code">{currentRoom}</strong>
         </div>
       )}
 
